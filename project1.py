@@ -2,11 +2,13 @@ import os
 import time
 from enum import Enum
 import sys
+import copy
 
 TEAM_NAME = "smartteam"
 SLEEP_TIME = 50
+TREE_DEPTH = 1
 
-class Owner(Enum):
+class Player(Enum):
     NOBODY = 0
     P1 = 1
     P2 = 2
@@ -73,7 +75,7 @@ class Edge:
       vertex2: Vertex
           The second vertex making up this Edge
   """
-  owner = Owner.NOBODY
+  owner = Player.NOBODY
   vertex1 = None
   vertex2 = None
 
@@ -89,8 +91,8 @@ class Edge:
 
     Parameters
     ------------
-        newOwner: Owner
-            New Owner for this Edge
+        newOwner: Player
+            New Player to act as owner for this Edge
     """
     self.owner = newOwner
 
@@ -110,6 +112,24 @@ class Edge:
     v1 = self.vertex1.equals(other.vertex1)
     v2 = self.vertex2.equals(other.vertex2)
     return v1 and v2
+
+  def isInList(self, list):
+    """
+    Determine if an identical edge is in a given list 
+
+    Parameters
+    ------------
+        list: Edge[]
+            list of Edges to search for a match
+
+    Return
+    ------------
+        boolean: Whether this Edge is already in the list
+    """
+    for edge in list:
+      if edge.equals(self):
+        return True
+    return False
 
   @staticmethod
   def getEdgeFromBoard(board, vertex1, vertex2):
@@ -154,7 +174,7 @@ class Edge:
 
 class Box:
   """
-  An object representing a Box on the game board. Boxes keep track of their four Vertices, their four Edges, their Owner,
+  An object representing a Box on the game board. Boxes keep track of their four Vertices, their four Edges, their Player (owner),
   and how many of their edges have been claimed. 
   
   Parameters
@@ -170,7 +190,7 @@ class Box:
   topRight = None
   bottomRight = None
 
-  owner = Owner.NOBODY
+  owner = Player.NOBODY
   northEdge = None
   eastEdge = None
   southEdge = None
@@ -225,8 +245,8 @@ class Box:
 
     Parameters
     ------------
-        newOwner: Owner
-            New Owner for this Box
+        newOwner: Player
+            New Player to act as owner for this Box
     """
     self.owner = newOwner
 
@@ -340,25 +360,54 @@ class Board:
       for col in range(0, 9):
         self.board[row][col].toString()
     print()
+
+class TreeNode:
+  """
+  A TreeNode representing a game state with a list of list of children nodes
+  
+  Parameters
+  ------------
+    board: box[][]
+      Board data to place in this TreeNode
+  """
+
+  children = []
+  """ Children of this TreeNode (Boards) """
+
+  def __init__(self, board):
+    self.board = board
+
+  def populateChildren(self, depth, player):
+    """ 
+    Populate the children of this TreeNode up to a specified depth
+    
+    Parameters
+  ------------
+    depth: int
+      Depth from root node to populate children
+    player: Player
+      Player who's turn is it at this board statea
+    """
+
         
 # Create a board
 initialBoardState = Board()
 initialBoardState.printBoard()
 
 edge1 = Edge.getEdgeFromBoard(initialBoardState.board, Vertex(0,0), Vertex(0,1))
-edge1.setOwner(Owner.P1)
+edge1.setOwner(Player.P1)
 edge1.addToBoard()
 
 edge2 = Edge.getEdgeFromBoard(initialBoardState.board, Vertex(0,0), Vertex(1,0))
 edge2.addToBoard()
-edge2.setOwner(Owner.P1)
+edge2.setOwner(Player.P1)
 
 edge3 = Edge.getEdgeFromBoard(initialBoardState.board, Vertex(0,1), Vertex(1,1))
-edge3.setOwner(Owner.P1)
+edge3.setOwner(Player.P1)
 edge3.addToBoard()
 
 edge4 = Edge.getEdgeFromBoard(initialBoardState.board, Vertex(1,0), Vertex(1,1))
-edge4.setOwner(Owner.P1)
+edge4.setOwner(Player.P1)
 edge4.addToBoard()
 
 initialBoardState.printBoard()
