@@ -150,27 +150,21 @@ class Edge:
         Edge: The Board's Edge at requested position 
     """
     # Find the two boxes that this Edge touches
-    box1 = None
-    box2 = None
     for row in board:
       for box in row:
         if box.hasVertices(vertex1, vertex2):
-          if box1 == None:
-            box1 = box
-          else:
-            box2 = box
-    # We only need the edge from box1 becuase box2 may not exist but they should be the same Edge either way
-    return box1.getEdgeWithVertices(vertex1, vertex2)
+          # We only need the edge from box1 becuase box2 may not exist but they should be the same Edge either way
+          return box.getEdgeWithVertices(vertex1, vertex2)
   
   def addToBoard(self):
     """
     Place this edge on the board by updating box owners
     """
+    # Since boxes share an edge, we need to call claim on both children in order to accurately update counts
     self.box1.claimEdge(self)
-    # Sometimes there's only one box, so be careful not to call None.claimEdge()
-    if self.box2 == None:
-      return
-    self.box2.claimEdge(self)
+    if self.box2 != None:    
+      self.box2.claimEdge(self)
+
 
 class Box:
   """
@@ -209,6 +203,16 @@ class Box:
     self.topRight = Vertex(x + 1, y)
     self.bottomRight = Vertex(x + 1, y + 1)
 
+  def printEdges(self):
+    goNorth = self.northEdge == None
+    goEast = self.eastEdge == None
+    goSouth = self.southEdge == None
+    goWest = self.westEdge == None
+    if not goNorth and not goEast and not goSouth and not goWest:
+      sys.stdout.write("X")
+      return
+    sys.stdout.write(" ")
+
 
   def findNeighbors(self, board):
     """
@@ -219,25 +223,70 @@ class Box:
         board: Board
             The current game board
     """
-    # "Edge" cases (haha)
-    if self.__x == 0:
-      self.westEdge = Edge(self, None, self.topLeft, self.bottomLeft)
-    if self.__x == 8:
-      self.eastEdge = Edge(self, None, self.topRight, self.bottomRight)
-    if self.__y == 0:
-      self.northEdge = Edge(self, None, self.topLeft, self.topRight)
-    if self.__y == 8:
-      self.southEdge = Edge(self, None, self.bottomRight, self.bottomRight)
+    # Check chich edges of are unclaimed
+    goNorth = self.northEdge == None
+    goEast = self.eastEdge == None
+    goSouth = self.southEdge == None
+    goWest = self.westEdge == None
 
-    # Find real neighbors
-    if self.__x > 0:
-      self.westEdge = Edge(self, board[self.__x - 1][self.__y], self.topLeft, self.bottomLeft)
-    if self.__x < 8:
-      self.eastEdge = Edge(self, board[self.__x + 1][self.__y], self.topRight, self.bottomRight)
-    if self.__y > 0:
-      self.northEdge = Edge(self, board[self.__x][self.__y - 1], self.topLeft, self.topRight)
-    if self.__y < 8:
-      self.southEdge = Edge(self, board[self.__x][self.__y + 1], self.bottomRight, self.bottomRight)
+
+    # Go in these directions and add an edge w/ neighboring Box
+    if goNorth:
+      if self.__y == 0:
+        # Out of bounds
+        self.northEdge = Edge(self, None, self.topLeft, self.topRight)
+      else:
+        # Find box to north
+        northBox = board[self.__y - 1][self.__x]
+        # Find edge between
+        edgeBetween = Edge(self, northBox, self.topLeft, self.topRight)
+        self.northEdge = edgeBetween
+        northBox.southEdge = edgeBetween
+        # Search north box for adjacencies
+        northBox.findNeighbors(board)
+
+    if goEast:
+      if self.__x == 8:
+        # Out of bounds
+        self.eastEdge = Edge(self, None, self.topRight, self.bottomRight)
+      else:
+        # Find box to the east
+        eastBox = board[self.__y][self.__x + 1]
+        # Find edge between
+        edgeBetween = Edge(self, eastBox, self.topRight, self.bottomRight)
+        self.eastEdge = edgeBetween
+        eastBox.westEdge = edgeBetween
+        # Search east box for adjacencies
+        eastBox.findNeighbors(board)
+
+    if goSouth:
+      if self.__y == 8:
+        # Out of bounds
+        self.southEdge = Edge(self, None, self.bottomLeft, self.bottomRight)
+      else:
+        # Find box to south
+        southBox = board[self.__y + 1][self.__x]
+        # Find edge between
+        edgeBetween = Edge(self, southBox, self.bottomLeft, self.bottomRight)
+        self.southEdge = edgeBetween
+        southBox.northEdge = edgeBetween
+        # Search south box for adjacencies
+        southBox.findNeighbors(board)
+
+    if goWest:
+      if self.__x == 0:
+        # Out of bounds
+        self.westEdge = Edge(self, None, self.topLeft, self.bottomLeft)
+      else:
+        # Find box to west
+        westBox = board[self.__y][self.__x - 1]
+        # Find edge between
+        edgeBetween = Edge(self, westBox, self.topLeft, self.bottomLeft)
+        self.westEdge = edgeBetween
+        westBox.eastEdge = edgeBetween
+        # Search west box for adjacencies
+        westBox.findNeighbors(board)
+
 
   def setOwner(self, newOwner):
     """
@@ -350,9 +399,8 @@ class Board:
       [Box(0,7), Box(1,7), Box(2,7), Box(3,7), Box(4,7), Box(5,7), Box(6,7), Box(7,7), Box(8,7)],
       [Box(0,8), Box(1,8), Box(2,8), Box(3,8), Box(4,8), Box(5,8), Box(6,8), Box(7,8), Box(8,8)]
     ]
-    for row in self.board:
-      for box in row:
-        box.findNeighbors(self.board)
+    # Recursively add edges from the center box
+    self.board[4][4].findNeighbors(self.board)
 
   def printBoard(self):
     for row in range(0, 9):
@@ -391,26 +439,25 @@ class TreeNode:
 
         
 # Create a board
-initialBoardState = Board()
-initialBoardState.printBoard()
+boardState = Board()
 
-edge1 = Edge.getEdgeFromBoard(initialBoardState.board, Vertex(0,0), Vertex(0,1))
+edge1 = Edge.getEdgeFromBoard(boardState.board, Vertex(0,0), Vertex(0,1))
 edge1.setOwner(Player.P1)
 edge1.addToBoard()
 
-edge2 = Edge.getEdgeFromBoard(initialBoardState.board, Vertex(0,0), Vertex(1,0))
+edge2 = Edge.getEdgeFromBoard(boardState.board, Vertex(0,0), Vertex(1,0))
 edge2.addToBoard()
 edge2.setOwner(Player.P1)
 
-edge3 = Edge.getEdgeFromBoard(initialBoardState.board, Vertex(0,1), Vertex(1,1))
+edge3 = Edge.getEdgeFromBoard(boardState.board, Vertex(0,1), Vertex(1,1))
 edge3.setOwner(Player.P1)
 edge3.addToBoard()
 
-edge4 = Edge.getEdgeFromBoard(initialBoardState.board, Vertex(1,0), Vertex(1,1))
+edge4 = Edge.getEdgeFromBoard(boardState.board, Vertex(1,0), Vertex(1,1))
 edge4.setOwner(Player.P1)
 edge4.addToBoard()
 
-initialBoardState.printBoard()
+boardState.printBoard()
 
 # This is "main"
 while True:
