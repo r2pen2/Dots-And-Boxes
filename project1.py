@@ -399,10 +399,6 @@ class Board:
 
     def __init__(self):
 
-        self.minEval = -math.inf
-        self.maxEval = math.inf
-        self.boardScore = 0
-
         self.board = [
             [Box(0, 0), Box(1, 0), Box(2, 0), Box(3, 0), Box(4, 0), Box(5, 0), Box(6, 0), Box(7, 0), Box(8, 0)],
             [Box(0, 1), Box(1, 1), Box(2, 1), Box(3, 1), Box(4, 1), Box(5, 1), Box(6, 1), Box(7, 1), Box(8, 1)],
@@ -490,97 +486,138 @@ def addNewEdgeFromMove(board, player, vertex1, vertex2):
 
 
 def evaluateBoard(board):
-    boxEdges = 0
-    score = 0
+
+    boxesP1 = 0
+    boxesP2 = 0
+
+    edgesP1 = 0
+    edgesP2 = 0
 
     # Iterate over each box
     for row in range(0, 9):
         for col in range(0, 9):
 
-            # Count edges claimed
-            if board[row][col].northEdge.owner is not Player.NONE: boxEdges += 1
-            if board[row][col].eastEdge.owner is not Player.NONE: boxEdges += 1
-            if board[row][col].southEdge.owner is not Player.NONE: boxEdges += 1
-            if board[row][col].westEdge.owner is not Player.NONE: boxEdges += 1
+            # Isolate box
+            box = board[row][col]
 
-            # Add to board score
-            if boxEdges == 0:
-                score += 1
-            elif boxEdges == 1:
-                score += 10
-            elif boxEdges == 2:
-                score += 100
-            elif boxEdges == 3:
-                score += 0
-            elif boxEdges == 4:
-                score += 1000
+            # Increment box count if claimed
+            if box.owner is Player.P1:
+                boxesP1 += 1
+            elif box.owner is Player.P2:
+                boxesP2 += 1
 
-            # Reset boxEdges
-            boxEdges = 0
+            # Increment edge count if claimed
+            edgesP1 += box.northEdge.owner is Player.P1
+            edgesP1 += box.eastEdge.owner is Player.P1
+            edgesP1 += box.southEdge.owner is Player.P1
+            edgesP1 += box.westEdge.owner is Player.P1
+
+            edgesP2 += box.northEdge.owner is Player.P2
+            edgesP2 += box.eastEdge.owner is Player.P2
+            edgesP2 += box.southEdge.owner is Player.P2
+            edgesP2 += box.westEdge.owner is Player.P2
+
+    # Claim score
+    claimP1 = boxesP1 * 1000
+    claimP2 = boxesP2 * 1000
+
+    # Calculate score
+    score = (boxesP1 - boxesP2) + (edgesP1 - edgesP2) + (claimP1 - claimP2)
 
     # Return score for board state
     return score
 
 
-def minimax(boardState, nextMoves, depth, player):
+def minimax(boardState, nextMoves, depth, player, alpha, beta):
 
-    maxScore = 0
-    maxMove = None
-
-    if player is Player.P1:
-        bestMove = (-math.inf, None)
-    else:
-        bestMove = (math.inf, None)
-
-    # Are we done?
+    # Check if we're at the depth limit
     if depth == 0:
-        return (boardState.boardScore, None)
+        return evaluateBoard(boardState.board), None
 
-    for moves in range(0, len(nextMoves)):
-        move = nextMoves.pop()
+    # Check player
+    if player is Player.P1:
 
-        # Copy board state values
-        boardCopy = deepcopy(boardState)
-        nextMovesCopy = deepcopy(nextMoves)
+        # Set default best move
+        bestMove = -math.inf, None
 
-        # nextMoves.appendleft(move)
+        # Iterate through possible moves
+        for move in nextMoves:
 
-        # if move.vertex1.x == 1 and move.vertex1.y == 0 and move.vertex2.x == 1 and move.vertex2.y == 1:
-        #     boardCopy.printBoard()
-        #     pass
+            # Debug
+            # print(f'Check {move.vertex1.x},{move.vertex1.y} {move.vertex2.x},{move.vertex2.y} @ {depth} for {player} -> {evaluateBoard(boardState.board)}')
 
-        # Evaluate move
-        boardPreval = evaluateBoard(boardCopy.board)
-        addNewEdgeFromMove(boardCopy.board, player, move.vertex1, move.vertex2)
-        boardEval = evaluateBoard(boardCopy.board)
-        moveScore = abs(boardPreval - boardEval)
-        boardCopy.boardScore = moveScore
+            # Copy the board
+            boardCopy = deepcopy(boardState)
 
-        print(f'Check {move.vertex1.x},{move.vertex1.y} {move.vertex2.x},{move.vertex2.y} -> {moveScore}, {depth}')
+            # Simulate next move
+            addNewEdgeFromMove(boardCopy.board, player, move.vertex1, move.vertex2)
 
-        # Alpha Beta Pruning
-        if player is Player.P1:
-            if moveScore >= boardCopy.maxEval:
-                return (moveScore, move)
+            # Evaluate new board
+            evaluation = evaluateBoard(boardCopy.board)
+
+            if evaluation >= beta:
+                return evaluation, move
             else:
-                boardCopy.minEval = max(boardCopy.minEval, moveScore)
-        else:
-            if moveScore <= boardCopy.minEval:
-                return (moveScore, move)
-            else:
-                boardCopy.maxEval = min(boardCopy.maxEval, moveScore)
+                alpha = max(alpha, evaluation)
 
-        # Recursion
-        if player is Player.P1:
-            childMove = minimax(boardCopy, nextMovesCopy, depth-1, Player.P2)
+            # Recurse!
+            childMove = minimax(boardCopy, nextMoves, depth-1, Player.P2, alpha, beta)
+
+            # Is child move better than others?
             if childMove[0] > bestMove[0]:
-                bestMove = (childMove[0], move)
-        else:
-            childMove = minimax(boardCopy, nextMovesCopy, depth-1, Player.P1)
-            if childMove[0] < bestMove[0]:
-                bestMove = (childMove[0], move)
+                bestMove = childMove[0], move
 
-    return bestMove
+            # Set alpha
+            alpha = max(alpha, childMove[0])
+
+            # Problematic if true
+            if beta <= alpha:
+                break
+
+        # Return best move
+        return bestMove
+
+    else:  # Player.P2
+
+        # Set default best move
+        bestMove = math.inf, None
+
+        # Iterate through possible moves
+        for move in nextMoves:
+
+            # Debug
+            # print(f'Check {move.vertex1.x},{move.vertex1.y} {move.vertex2.x},{move.vertex2.y} @ {depth} for {player} -> {evaluateBoard(boardState.board)}')
+
+            # Copy the board
+            boardCopy = deepcopy(boardState)
+
+            # Simulate next move
+            addNewEdgeFromMove(boardCopy.board, player, move.vertex1, move.vertex2)
+
+            # Evaluate new board
+            evaluation = evaluateBoard(boardCopy.board)
+
+            if evaluation <= alpha:
+                return evaluation, move
+            else:
+                beta = min(beta, evaluation)
+
+            # Recurse!
+            childMove = minimax(boardCopy, nextMoves, depth - 1, Player.P1, alpha, beta)
+
+            # Is child move worse than others?
+            if childMove[0] < bestMove[0]:
+                bestMove = childMove[0], move
+
+            # Set beta
+            beta = min(beta, childMove[0])
+
+            # Problematic if true
+            if beta <= alpha:
+                break
+
+        # Return best move
+        return bestMove
 
 
 # Create a board
@@ -592,13 +629,20 @@ addNewEdgeFromMove(boardState.board, Player.P2, Vertex(1, 1), Vertex(1, 2))
 addNewEdgeFromMove(boardState.board, Player.P1, Vertex(1, 1), Vertex(2, 1))
 addNewEdgeFromMove(boardState.board, Player.P2, Vertex(2, 1), Vertex(2, 2))
 
+player = Player.P1
+
 while True:
 
     boardState.printBoard()
-    newmove = minimax(boardState, boardState.getOpenEdges(), 3, Player.P1)
-    print(f'{newmove[1].vertex1.x},{newmove[1].vertex1.y} {newmove[1].vertex2.x},{newmove[1].vertex2.y}')
+    newmove = minimax(boardState, boardState.getOpenEdges(), 3, player, -math.inf, math.inf)
+    print(f'{player} move {newmove[1].vertex1.x},{newmove[1].vertex1.y} {newmove[1].vertex2.x},{newmove[1].vertex2.y}')
     addNewEdgeFromMove(boardState.board, Player.P1, newmove[1].vertex1, newmove[1].vertex2)
-    exit()
+    # exit()
+
+    if player is Player.P1:
+        player = Player.P2
+    elif player is Player.P2:
+        player = Player.P1
 
 # print(evaluateBoard(boardState.board))
 # for edge in boardState.getOpenEdges():
