@@ -8,8 +8,8 @@ from collections import deque
 from copy import deepcopy
 
 TEAM_NAME = "player1"
-SLEEP_TIME = 0.050
-TREE_DEPTH = 1
+SLEEP_TIME = 0.200
+TREE_DEPTH = 3
 
 
 class Player(Enum):
@@ -496,12 +496,14 @@ def evaluateBoard(board):
     edgesP2 = 0
 
     # NOTE: I am trying to use U-Score to deter completing the third side.
-    uscoreP1 = 0
-    uscoreP2 = 0
+    uscore = 0
 
     # Iterate over each box
     for row in range(0, 9):
         for col in range(0, 9):
+
+            boxEdgesP1 = 0
+            boxEdgesP2 = 0
 
             # Isolate box
             box = board[row][col]
@@ -513,31 +515,31 @@ def evaluateBoard(board):
                 boxesP2 += 1
 
             # Increment edge count if claimed
-            edgesP1 += box.northEdge.owner is Player.P1
-            edgesP1 += box.eastEdge.owner is Player.P1
-            edgesP1 += box.southEdge.owner is Player.P1
-            edgesP1 += box.westEdge.owner is Player.P1
+            boxEdgesP1 += box.northEdge.owner is Player.P1
+            boxEdgesP1 += box.eastEdge.owner is Player.P1
+            boxEdgesP1 += box.southEdge.owner is Player.P1
+            boxEdgesP1 += box.westEdge.owner is Player.P1
 
-            edgesP2 += box.northEdge.owner is Player.P2
-            edgesP2 += box.eastEdge.owner is Player.P2
-            edgesP2 += box.southEdge.owner is Player.P2
-            edgesP2 += box.westEdge.owner is Player.P2
+            boxEdgesP2 += box.northEdge.owner is Player.P2
+            boxEdgesP2 += box.eastEdge.owner is Player.P2
+            boxEdgesP2 += box.southEdge.owner is Player.P2
+            boxEdgesP2 += box.westEdge.owner is Player.P2
 
-            if edgesP1 == 3:
-                uscoreP1 += 1
-            if edgesP2 == 3:
-                uscoreP2 += 1
+            # Uscore gets incremented if 3/4 sides are claimed on this box
+            # It's an attempt at avoiding accidental scoring from the other player
+            if (boxEdgesP1 + boxEdgesP2) == 3:
+                # print(f'U: 1({boxEdgesP1}) 2({boxEdgesP2})')
+                uscore += 1
+
+            edgesP1 += boxEdgesP1
+            edgesP2 += boxEdgesP2
 
     # Claim score
     claimP1 = boxesP1 * 1000
-    claimP2 = boxesP2 * 1000
-
-    # U Score (3 sides claimed)
-    uscoreP1 *= 100
-    uscoreP2 *= 100
+    claimP2 = (boxesP2 + uscore) * 1000
 
     # Calculate score
-    score = (boxesP1 - boxesP2) + (edgesP1 - edgesP2) + (claimP1 - claimP2) - (uscoreP1 + uscoreP2)
+    score = (boxesP1 - boxesP2) + (edgesP1 - edgesP2) + (claimP1 - claimP2)
 
     # Return score for board state
     return score
@@ -583,6 +585,9 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
             if childMove[0] > bestMove[0]:
                 bestMove = childMove[0], move
 
+            # Double-check alpha
+            alpha = max(alpha, childMove[0])
+
         # Return best move
         return bestMove
 
@@ -619,37 +624,15 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
             if childMove[0] < bestMove[0]:
                 bestMove = childMove[0], move
 
+            # Double-check beta
+            beta = min(beta, childMove[0])
+
         # Return best move
         return bestMove
 
 
 # Create a board
 boardState = Board()
-
-# addNewEdgeFromMove(boardState.board, Player.P2, Vertex(0, 0), Vertex(0, 1))
-# addNewEdgeFromMove(boardState.board, Player.P1, Vertex(0, 0), Vertex(1, 0))
-# addNewEdgeFromMove(boardState.board, Player.P2, Vertex(1, 1), Vertex(1, 2))
-# addNewEdgeFromMove(boardState.board, Player.P1, Vertex(1, 1), Vertex(2, 1))
-# addNewEdgeFromMove(boardState.board, Player.P2, Vertex(2, 1), Vertex(2, 2))
-#
-# player = Player.P1
-#
-# while True:
-#
-#     boardState.printBoard()
-#     newmove = minimax(boardState, boardState.getOpenEdges(), 3, player, -math.inf, math.inf)
-#     print(f'{player} move {newmove[1].vertex1.x},{newmove[1].vertex1.y} {newmove[1].vertex2.x},{newmove[1].vertex2.y}')
-#     addNewEdgeFromMove(boardState.board, Player.P1, newmove[1].vertex1, newmove[1].vertex2)
-#     # exit()
-#
-#     if player is Player.P1:
-#         player = Player.P2
-#     elif player is Player.P2:
-#         player = Player.P1
-
-# print(evaluateBoard(boardState.board))
-# for edge in boardState.getOpenEdges():
-#     print(f'{edge.vertex1.x},{edge.vertex1.y} {edge.vertex2.x},{edge.vertex2.y}')
 
 # This is "main"
 while True:
@@ -676,9 +659,10 @@ while True:
         # Add opponent move
         addNewEdgeFromMove(boardState.board, Player.P2, vertex1, vertex2)
 
+    # Do we pass or play?
     if turnType:
         # Make our move
-        ourMove = minimax(boardState, boardState.getOpenEdges(), 3, Player.P1, -math.inf, math.inf)
+        ourMove = minimax(boardState, boardState.getOpenEdges(), TREE_DEPTH, Player.P1, -math.inf, math.inf)
         addNewEdgeFromMove(boardState.board, Player.P1, ourMove[1].vertex1, ourMove[1].vertex2)
 
         print(f'P1 move {ourMove[1].vertex1.x},{ourMove[1].vertex1.y} {ourMove[1].vertex2.x},{ourMove[1].vertex2.y}')
