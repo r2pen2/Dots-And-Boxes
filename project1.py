@@ -1,13 +1,14 @@
 import math
 import os
+import re
 import time
 from enum import Enum
 import sys
 from collections import deque
 from copy import deepcopy
 
-TEAM_NAME = "smartteam"
-SLEEP_TIME = 50
+TEAM_NAME = "player1"
+SLEEP_TIME = 0.050
 TREE_DEPTH = 1
 
 
@@ -23,7 +24,8 @@ def awaitTurn():
         time.sleep(SLEEP_TIME)  # Try not to blow up some poor TA's laptop :(
         if os.path.exists(f'./{TEAM_NAME}.go'):
             return True
-
+        if os.path.exists(f'./{TEAM_NAME}.pass'):
+            return False
 
 def gameHasEnded():
     # Is the end_game file there?
@@ -493,6 +495,10 @@ def evaluateBoard(board):
     edgesP1 = 0
     edgesP2 = 0
 
+    # NOTE: I am trying to use U-Score to deter completing the third side.
+    uscoreP1 = 0
+    uscoreP2 = 0
+
     # Iterate over each box
     for row in range(0, 9):
         for col in range(0, 9):
@@ -517,12 +523,21 @@ def evaluateBoard(board):
             edgesP2 += box.southEdge.owner is Player.P2
             edgesP2 += box.westEdge.owner is Player.P2
 
+            if edgesP1 == 3:
+                uscoreP1 += 1
+            if edgesP2 == 3:
+                uscoreP2 += 1
+
     # Claim score
     claimP1 = boxesP1 * 1000
     claimP2 = boxesP2 * 1000
 
+    # U Score (3 sides claimed)
+    uscoreP1 *= 100
+    uscoreP2 *= 100
+
     # Calculate score
-    score = (boxesP1 - boxesP2) + (edgesP1 - edgesP2) + (claimP1 - claimP2)
+    score = (boxesP1 - boxesP2) + (edgesP1 - edgesP2) + (claimP1 - claimP2) - (uscoreP1 + uscoreP2)
 
     # Return score for board state
     return score
@@ -555,6 +570,7 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
             # Evaluate new board
             evaluation = evaluateBoard(boardCopy.board)
 
+            # Alpha-Beta pruning
             if evaluation >= beta:
                 return evaluation, move
             else:
@@ -566,13 +582,6 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
             # Is child move better than others?
             if childMove[0] > bestMove[0]:
                 bestMove = childMove[0], move
-
-            # Set alpha
-            alpha = max(alpha, childMove[0])
-
-            # Problematic if true
-            if beta <= alpha:
-                break
 
         # Return best move
         return bestMove
@@ -597,6 +606,7 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
             # Evaluate new board
             evaluation = evaluateBoard(boardCopy.board)
 
+            # Alpha-Beta pruning
             if evaluation <= alpha:
                 return evaluation, move
             else:
@@ -609,13 +619,6 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
             if childMove[0] < bestMove[0]:
                 bestMove = childMove[0], move
 
-            # Set beta
-            beta = min(beta, childMove[0])
-
-            # Problematic if true
-            if beta <= alpha:
-                break
-
         # Return best move
         return bestMove
 
@@ -623,26 +626,26 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
 # Create a board
 boardState = Board()
 
-addNewEdgeFromMove(boardState.board, Player.P2, Vertex(0, 0), Vertex(0, 1))
-addNewEdgeFromMove(boardState.board, Player.P1, Vertex(0, 0), Vertex(1, 0))
-addNewEdgeFromMove(boardState.board, Player.P2, Vertex(1, 1), Vertex(1, 2))
-addNewEdgeFromMove(boardState.board, Player.P1, Vertex(1, 1), Vertex(2, 1))
-addNewEdgeFromMove(boardState.board, Player.P2, Vertex(2, 1), Vertex(2, 2))
-
-player = Player.P1
-
-while True:
-
-    boardState.printBoard()
-    newmove = minimax(boardState, boardState.getOpenEdges(), 3, player, -math.inf, math.inf)
-    print(f'{player} move {newmove[1].vertex1.x},{newmove[1].vertex1.y} {newmove[1].vertex2.x},{newmove[1].vertex2.y}')
-    addNewEdgeFromMove(boardState.board, Player.P1, newmove[1].vertex1, newmove[1].vertex2)
-    # exit()
-
-    if player is Player.P1:
-        player = Player.P2
-    elif player is Player.P2:
-        player = Player.P1
+# addNewEdgeFromMove(boardState.board, Player.P2, Vertex(0, 0), Vertex(0, 1))
+# addNewEdgeFromMove(boardState.board, Player.P1, Vertex(0, 0), Vertex(1, 0))
+# addNewEdgeFromMove(boardState.board, Player.P2, Vertex(1, 1), Vertex(1, 2))
+# addNewEdgeFromMove(boardState.board, Player.P1, Vertex(1, 1), Vertex(2, 1))
+# addNewEdgeFromMove(boardState.board, Player.P2, Vertex(2, 1), Vertex(2, 2))
+#
+# player = Player.P1
+#
+# while True:
+#
+#     boardState.printBoard()
+#     newmove = minimax(boardState, boardState.getOpenEdges(), 3, player, -math.inf, math.inf)
+#     print(f'{player} move {newmove[1].vertex1.x},{newmove[1].vertex1.y} {newmove[1].vertex2.x},{newmove[1].vertex2.y}')
+#     addNewEdgeFromMove(boardState.board, Player.P1, newmove[1].vertex1, newmove[1].vertex2)
+#     # exit()
+#
+#     if player is Player.P1:
+#         player = Player.P2
+#     elif player is Player.P2:
+#         player = Player.P1
 
 # print(evaluateBoard(boardState.board))
 # for edge in boardState.getOpenEdges():
@@ -650,15 +653,50 @@ while True:
 
 # This is "main"
 while True:
-    break
+
     # Determine if it's our turn
-    awaitTurn()
+    turnType = awaitTurn()
+    print("MY TURN")
 
     # Examine board
+    moveFileR = open("move_file", "r")
+    line = moveFileR.readline()
+    moveFileR.close()
 
-    # Make move
+    # Interpret coords
+    coords = re.findall("[0-9],[0-9]", line)
 
-    # Pass off
+    # If opponent has moved
+    if len(coords) != 0:
+        vertex1 = Vertex(int(coords[0][0]), int(coords[0][2]))
+        vertex2 = Vertex(int(coords[1][0]), int(coords[1][2]))
+
+        print(f'P2 move {vertex1.x},{vertex1.y} {vertex2.x},{vertex2.y}')
+
+        # Add opponent move
+        addNewEdgeFromMove(boardState.board, Player.P2, vertex1, vertex2)
+
+    if turnType:
+        # Make our move
+        ourMove = minimax(boardState, boardState.getOpenEdges(), 3, Player.P1, -math.inf, math.inf)
+        addNewEdgeFromMove(boardState.board, Player.P1, ourMove[1].vertex1, ourMove[1].vertex2)
+
+        print(f'P1 move {ourMove[1].vertex1.x},{ourMove[1].vertex1.y} {ourMove[1].vertex2.x},{ourMove[1].vertex2.y}')
+
+        # Pass off
+        moveFileW = open("move_file", "w")
+        line = f'{TEAM_NAME} {ourMove[1].vertex1.x},{ourMove[1].vertex1.y} {ourMove[1].vertex2.x},{ourMove[1].vertex2.y}'
+        moveFileW.write(line)
+        moveFileW.close()
+    else:
+        print(f'P1 move PASS')
+
+        # Pass off
+        moveFileW = open("move_file", "w")
+        line = f'{TEAM_NAME} 0,0 0,0'
+        moveFileW.write(line)
+        moveFileW.close()
 
     if gameHasEnded():
+        print("GAME END")
         break

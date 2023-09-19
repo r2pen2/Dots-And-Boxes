@@ -105,7 +105,18 @@ def external_player(board, name, opponent_name, pass_or_go=False, time_limit=10)
                     return BAD_MOVE_I_LOST, f'Invalid move!'
             else:
                 # Check if move is valid
+
+                # make sure coords are in correct order, force correct if not
+                if r1 > r2 or c1 > c2:
+                    r3 = r1
+                    c3 = c1
+                    r1 = r2
+                    c1 = c2
+                    r2 = r3
+                    c2 = c3
+
                 marked = board.get(((r1, c1), (r2, c2)))
+
                 if marked != 0:
                     return BAD_MOVE_I_LOST, f'Invalid move!'
 
