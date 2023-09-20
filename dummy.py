@@ -7,7 +7,7 @@ import sys
 from collections import deque
 from copy import deepcopy
 
-TEAM_NAME = "player1"
+TEAM_NAME = "player2"
 SLEEP_TIME = 0.200
 TREE_DEPTH = 3
 
@@ -26,6 +26,7 @@ def awaitTurn():
             return True
         if os.path.exists(f'./{TEAM_NAME}.pass'):
             return False
+
 
 def gameHasEnded():
     # Is the end_game file there?
@@ -491,7 +492,6 @@ def addNewEdgeFromMove(board, player, vertex1, vertex2):
 
 
 def evaluateBoard(board, player):
-
     boxesP1 = 0
     boxesP2 = 0
 
@@ -565,7 +565,6 @@ def evaluateBoard(board, player):
 
 
 def minimax(boardState, nextMoves, depth, player, alpha, beta):
-
     # Check if we're at the depth limit
     if depth == 0:
         return evaluateBoard(boardState.board, player), None
@@ -598,7 +597,7 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
                 alpha = max(alpha, evaluation)
 
             # Recurse!
-            childMove = minimax(boardCopy, nextMoves, depth-1, Player.P2, alpha, beta)
+            childMove = minimax(boardCopy, nextMoves, depth - 1, Player.P2, alpha, beta)
 
             # Is child move better than others?
             if childMove[0] > bestMove[0]:
@@ -677,7 +676,7 @@ while True:
         vertex1 = Vertex(int(coords[0][0]), int(coords[0][2]))
         vertex2 = Vertex(int(coords[1][0]), int(coords[1][2]))
 
-        print(f'P2 move {vertex1.x},{vertex1.y} {vertex2.x},{vertex2.y}')
+        print(f'P1 move {vertex1.x},{vertex1.y} {vertex2.x},{vertex2.y}')
 
         # Add opponent move
         addNewEdgeFromMove(boardState.board, Player.P2, vertex1, vertex2)
@@ -688,7 +687,7 @@ while True:
         ourMove = minimax(boardState, boardState.getOpenEdges(), TREE_DEPTH, Player.P1, -math.inf, math.inf)
         addNewEdgeFromMove(boardState.board, Player.P1, ourMove[1].vertex1, ourMove[1].vertex2)
 
-        print(f'P1 move {ourMove[1].vertex1.x},{ourMove[1].vertex1.y} {ourMove[1].vertex2.x},{ourMove[1].vertex2.y}')
+        print(f'P2 move {ourMove[1].vertex1.x},{ourMove[1].vertex1.y} {ourMove[1].vertex2.x},{ourMove[1].vertex2.y}')
 
         # Pass off
         moveFileW = open("move_file", "w")
@@ -696,7 +695,7 @@ while True:
         moveFileW.write(line)
         moveFileW.close()
     else:
-        print(f'P1 move PASS')
+        print(f'P2 move PASS')
 
         # Pass off
         moveFileW = open("move_file", "w")
