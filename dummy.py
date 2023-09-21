@@ -8,8 +8,8 @@ from collections import deque
 from copy import deepcopy
 
 TEAM_NAME = "player2"
-SLEEP_TIME = 0.200
-TREE_DEPTH = 3
+SLEEP_TIME = 0.300
+TREE_DEPTH = 5
 
 
 class Player(Enum):
@@ -18,14 +18,22 @@ class Player(Enum):
     P2 = 2
 
 
+class TurnType(Enum):
+    GO = 0
+    PASS = 1
+    END = 2
+
+
 def awaitTurn():
     # Is our .go file there?
     while True:
         time.sleep(SLEEP_TIME)  # Try not to blow up some poor TA's laptop :(
+        if os.path.exists(f'./end_game'):
+            return TurnType.END
         if os.path.exists(f'./{TEAM_NAME}.go'):
-            return True
+            return TurnType.GO
         if os.path.exists(f'./{TEAM_NAME}.pass'):
-            return False
+            return TurnType.PASS
 
 
 def gameHasEnded():
@@ -655,12 +663,17 @@ boardState = Board()
 # This is "main"
 while True:
 
-    if gameHasEnded():
-        print("GAME END")
-        break
+    # if gameHasEnded():
+    #     print("GAME END")
+    #     break
 
     # Determine if it's our turn
     turnType = awaitTurn()
+
+    if turnType is TurnType.END:
+        print("GAME END")
+        break
+
     print("MY TURN")
 
     # Examine board
@@ -682,9 +695,10 @@ while True:
         addNewEdgeFromMove(boardState.board, Player.P2, vertex1, vertex2)
 
     # Do we pass or play?
-    if turnType:
+    if turnType is TurnType.GO:
         # Make our move
         ourMove = minimax(boardState, boardState.getOpenEdges(), TREE_DEPTH, Player.P1, -math.inf, math.inf)
+
         addNewEdgeFromMove(boardState.board, Player.P1, ourMove[1].vertex1, ourMove[1].vertex2)
 
         print(f'P2 move {ourMove[1].vertex1.x},{ourMove[1].vertex1.y} {ourMove[1].vertex2.x},{ourMove[1].vertex2.y}')
@@ -694,7 +708,8 @@ while True:
         line = f'{TEAM_NAME} {ourMove[1].vertex1.x},{ourMove[1].vertex1.y} {ourMove[1].vertex2.x},{ourMove[1].vertex2.y}'
         moveFileW.write(line)
         moveFileW.close()
-    else:
+
+    elif turnType is TurnType.PASS:
         print(f'P2 move PASS')
 
         # Pass off

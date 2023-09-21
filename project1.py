@@ -8,8 +8,8 @@ from collections import deque
 from copy import deepcopy
 
 TEAM_NAME = "player1"
-SLEEP_TIME = 0.200
-TREE_DEPTH = 3
+SLEEP_TIME = 0.300
+TREE_DEPTH = 5
 
 
 class Player(Enum):
@@ -17,15 +17,23 @@ class Player(Enum):
     P1 = 1
     P2 = 2
 
+class TurnType(Enum):
+    GO = 0
+    PASS = 1
+    END = 2
+
 
 def awaitTurn():
     # Is our .go file there?
     while True:
         time.sleep(SLEEP_TIME)  # Try not to blow up some poor TA's laptop :(
+        if os.path.exists(f'./end_game'):
+            return TurnType.END
         if os.path.exists(f'./{TEAM_NAME}.go'):
-            return True
+            return TurnType.GO
         if os.path.exists(f'./{TEAM_NAME}.pass'):
-            return False
+            return TurnType.PASS
+
 
 def gameHasEnded():
     # Is the end_game file there?
@@ -494,13 +502,6 @@ def evaluateBoard(board, player):
 
     boxesP1 = 0
     boxesP2 = 0
-
-    edgesP1 = 0
-    edgesP2 = 0
-
-    # NOTE: I am trying to use U-Score to deter completing the third side.
-    uscoreP1 = 0
-    uscoreP2 = 0
     uscore = 0
 
     # Iterate over each box
@@ -525,37 +526,6 @@ def evaluateBoard(board, player):
 
             if boxEdges == 3:
                 uscore += 1
-
-            # Increment edge count if claimed
-            # boxEdgesP1 += box.northEdge.owner is Player.P1
-            # boxEdgesP1 += box.eastEdge.owner is Player.P1
-            # boxEdgesP1 += box.southEdge.owner is Player.P1
-            # boxEdgesP1 += box.westEdge.owner is Player.P1
-
-            # boxEdgesP2 += box.northEdge.owner is Player.P2
-            # boxEdgesP2 += box.eastEdge.owner is Player.P2
-            # boxEdgesP2 += box.southEdge.owner is Player.P2
-            # boxEdgesP2 += box.westEdge.owner is Player.P2
-
-            # Uscore gets incremented if 3/4 sides are claimed on this box
-            # It's an attempt at avoiding accidental scoring from the other player
-            # if box.getClaimedEdges() == 3:
-            #     # print(f'U: 1({boxEdgesP1}) 2({boxEdgesP2})')
-            #     if player is Player.P1:
-            #         uscoreP2 += 1
-            #     elif player is Player.P2:
-            #         uscoreP1 += 1
-
-            # edgesP1 += boxEdgesP1
-            # edgesP2 += boxEdgesP2
-
-    # Claim score
-    # claimP1 = boxesP1 * 1000
-    # claimP2 = boxesP2 * 1000
-
-    # Scale uscores
-    # uscoreP1 *= 1000
-    # uscoreP2 *= 1000
 
     # Calculate score
     score = (boxesP1 * 1000) - (boxesP2 * 1000) - uscore
@@ -656,12 +626,17 @@ boardState = Board()
 # This is "main"
 while True:
 
-    if gameHasEnded():
-        print("GAME END")
-        break
+    # if gameHasEnded():
+    #     print("GAME END")
+    #     break
 
     # Determine if it's our turn
     turnType = awaitTurn()
+
+    if turnType is TurnType.END:
+        print("GAME END")
+        break
+
     print("MY TURN")
 
     # Examine board
@@ -683,9 +658,10 @@ while True:
         addNewEdgeFromMove(boardState.board, Player.P2, vertex1, vertex2)
 
     # Do we pass or play?
-    if turnType:
+    if turnType is TurnType.GO:
         # Make our move
         ourMove = minimax(boardState, boardState.getOpenEdges(), TREE_DEPTH, Player.P1, -math.inf, math.inf)
+
         addNewEdgeFromMove(boardState.board, Player.P1, ourMove[1].vertex1, ourMove[1].vertex2)
 
         print(f'P1 move {ourMove[1].vertex1.x},{ourMove[1].vertex1.y} {ourMove[1].vertex2.x},{ourMove[1].vertex2.y}')
@@ -695,7 +671,8 @@ while True:
         line = f'{TEAM_NAME} {ourMove[1].vertex1.x},{ourMove[1].vertex1.y} {ourMove[1].vertex2.x},{ourMove[1].vertex2.y}'
         moveFileW.write(line)
         moveFileW.close()
-    else:
+
+    elif turnType is TurnType.PASS:
         print(f'P1 move PASS')
 
         # Pass off
