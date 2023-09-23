@@ -4,6 +4,7 @@ from Constants import *
 from Edge import Edge
 from Vertex import Vertex
 
+
 class Box:
     """
     An object representing a Box on the game board. Boxes keep track of their four Vertices, their four Edges, their Player (owner),
@@ -209,18 +210,13 @@ class Box:
         if isNorth:
             self.northEdge.owner = edge.owner
             self.__claimedEdges += 1
-
         elif isEast:
             self.eastEdge.owner = edge.owner
             self.__claimedEdges += 1
-
         elif isSouth:
-
             self.southEdge.owner = edge.owner
             self.__claimedEdges += 1
-
         elif isWest:
-
             self.westEdge.owner = edge.owner
             self.__claimedEdges += 1
 

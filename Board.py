@@ -30,6 +30,14 @@ class Board:
         print()
 
     def getOpenEdges(self):
+        """
+        Iterates over the entire board and returns a list of all open edges: Meant to be used as a list of possible
+        moves for the minimax algorithm.
+
+        Returns
+        -------
+            list Edge: List of open edges / available moves
+        """
 
         edges = deque()
 

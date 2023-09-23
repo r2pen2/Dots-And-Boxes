@@ -5,7 +5,22 @@ from Gameplay import *
 
 
 def evaluateBoard(board):
+    """
+    Examine the current board state and return a value proportional to its favor towards P1.
+    Current implementation takes into account the [potential] score of both players AND an avoidance of
+    completing the third side of a box (using 'uscore').
 
+    Parameters
+    ----------
+        board: arr arr Box
+            Board to evaluate.
+
+    Returns
+    -------
+        int: Score of the given board.
+    """
+
+    # Set up scores
     boxesP1 = 0
     boxesP2 = 0
     uscore = 0
@@ -14,6 +29,7 @@ def evaluateBoard(board):
     for row in range(0, 9):
         for col in range(0, 9):
 
+            # Used to count a single box's edges
             boxEdges = 0
 
             # Isolate box
@@ -25,11 +41,13 @@ def evaluateBoard(board):
             elif box.owner is Player.P2:
                 boxesP2 += 1
 
+            # For each owned side, increment boxEdges
             boxEdges += box.northEdge.owner is not Player.NONE
             boxEdges += box.eastEdge.owner is not Player.NONE
             boxEdges += box.southEdge.owner is not Player.NONE
             boxEdges += box.westEdge.owner is not Player.NONE
 
+            # If there are 3 sides owned, increment uscore
             if boxEdges == 3:
                 uscore += 1
 
@@ -41,6 +59,33 @@ def evaluateBoard(board):
 
 
 def minimax(boardState, nextMoves, depth, player, alpha, beta):
+    """
+    Use the minimax algorithm with a defined depth limit to determine the bext move to make.
+
+    Parameters
+    ----------
+        boardState: Board
+            Game board at the top of the tree.
+
+        nextMoves: list Edge
+            List of open edges / available moves.
+
+        depth: int
+            Distance from maximum depth of tree.
+
+        player: Player
+            Player whose turn it is on the current level of the tree.
+
+        alpha: int
+            Lowest board / move score so far.
+
+        beta: int
+            Highest board / move score so far.
+
+    Returns
+    -------
+        int: Score of the given board
+    """
 
     # Check if we're at the depth limit
     if depth == 0:
@@ -55,7 +100,7 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
         # Iterate through possible moves
         for move in nextMoves:
 
-            # Debug
+            # DEBUG
             # print(f'Check {move.vertex1.x},{move.vertex1.y} {move.vertex2.x},{move.vertex2.y} @ {depth} for {player} -> {evaluateBoard(boardState.board)}')
 
             # Copy the board
@@ -80,9 +125,6 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
             if childMove[0] > bestMove[0]:
                 bestMove = childMove[0], move
 
-            # Double-check alpha
-            alpha = max(alpha, childMove[0])
-
         # Return best move
         return bestMove
 
@@ -94,7 +136,7 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
         # Iterate through possible moves
         for move in nextMoves:
 
-            # Debug
+            # DEBUG
             # print(f'Check {move.vertex1.x},{move.vertex1.y} {move.vertex2.x},{move.vertex2.y} @ {depth} for {player} -> {evaluateBoard(boardState.board)}')
 
             # Copy the board
@@ -118,9 +160,6 @@ def minimax(boardState, nextMoves, depth, player, alpha, beta):
             # Is child move worse than others?
             if childMove[0] < bestMove[0]:
                 bestMove = childMove[0], move
-
-            # Double-check beta
-            beta = min(beta, childMove[0])
 
         # Return best move
         return bestMove
