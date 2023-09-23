@@ -1,0 +1,12 @@
+/build/
+/dist/
+
+README.md
+core_gameplay.py
+display.py
+external_players.py
+game.py
+human.py
+referee.py
+
+SmartTeam.spec
