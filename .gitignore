@@ -4,6 +4,7 @@
 README.md
 core_gameplay.py
 display.py
+dotsandboxes.py
 external_players.py
 game.py
 human.py
