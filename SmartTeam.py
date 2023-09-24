@@ -5,6 +5,11 @@ from Minimax import *
 from Vertex import Vertex
 from Gameplay import *
 
+# Welcome message
+print("------ DOTS & BOXES ------")
+print("| Presented by SmartTeam |")
+print("--------------------------")
+
 # Create a board
 boardState = Board()
 
